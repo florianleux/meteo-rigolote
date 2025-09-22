@@ -1,0 +1,89 @@
+---
+alwaysApply: true
+---
+
+# Widget Guidelines - Universal Flutter Patterns
+
+_Universal Flutter widget patterns and UI standards_
+_Last updated: January 2025_
+
+## Homepage Footer Information
+
+### Rule: Copyright and Version Display
+
+**Priority**: Medium
+**Context**: Homepage/Main screen only
+
+**Implementation**:
+
+```dart
+// Add at bottom of homepage layout
+Widget _buildCopyrightDisplay() {
+  final currentYear = DateTime.now().year;
+  return Center(
+    child: Text(
+      'CRAPOLO STUDIOS - $currentYear',
+      style: const TextStyle(
+        fontFamily: 'YourBoldFont', // Use your app's bold/display font
+        fontSize: 13,
+        color: Colors.black,
+        fontWeight: FontWeight.normal,
+      ),
+    ),
+  );
+}
+
+Widget _buildVersionDisplay() {
+  return Center(
+    child: Text(
+      'v${AppConstants.version}',
+      style: const TextStyle(
+        fontFamily: 'YourRegularFont', // Use your app's regular font
+        fontSize: 12,
+        color: Colors.black54,
+        fontWeight: FontWeight.normal,
+      ),
+    ),
+  );
+}
+
+// In homepage build method
+Column(
+  children: [
+    // ... main content ...
+    const Spacer(),
+    _buildCopyrightDisplay(),
+    const SizedBox(height: 4),
+    _buildVersionDisplay(),
+    const SizedBox(height: 8),
+  ],
+)
+```
+
+**Guidelines**:
+
+- **Location**: Only on homepage/main screen
+- **Order**: Copyright above version
+- **Spacing**: 4px between elements, 8px from screen bottom
+- **Fonts**: Different fonts for visual hierarchy (bold/display for studio, regular for version)
+- **Size**: Copyright slightly larger (13px) than version (12px)
+- **Color**: Copyright in full black, version in subtle gray
+- **Studio Name**: Always use "CRAPOLO STUDIOS" (fixed brand name)
+- **Dynamic Year**: Use `DateTime.now().year` for automatic updates
+
+**Version Constant Setup**:
+
+```dart
+// lib/constants/app_constants.dart
+class AppConstants {
+  static const String version = '1.0.0';
+  // ... other constants
+}
+```
+
+**When to Apply**:
+
+- ✅ Homepage/Main screen with sufficient vertical space
+- ✅ Apps with branding requirements
+- ❌ Secondary screens or dialogs
+- ❌ Screens with limited space or complex layouts

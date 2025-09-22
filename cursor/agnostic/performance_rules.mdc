@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+## PERFORMANCE TARGETS
+
+### Recommended Performance Goals:
+
+- **Frame Rate**: Maintain 60fps during normal operation
+- **Build Time**: Widget build methods < 16ms
+- **Memory Usage**: No memory leaks, efficient resource cleanup
+- **App Startup**: < 3 seconds on mid-range devices
+- **List Scrolling**: Smooth 60fps scrolling for 1000+ items
+- **Image Loading**: < 500ms for cached images
+- **Screen Transitions**: < 300ms transition animations
+
+### Performance Metrics to Monitor:
+
+- Widget rebuild frequency
+- Memory usage patterns
+- Frame rendering times
+- Asset loading times
+- Network request durations
+- Database query performance
+
+_Universal Flutter/Dart performance optimization guidelines_
+_Last updated: January 2025_

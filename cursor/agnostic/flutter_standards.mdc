@@ -1,0 +1,1154 @@
+# Flutter Development Standards & Best Practices
+
+_Universal Flutter/Dart coding standards for any application_
+
+## 1. PROJECT ARCHITECTURE
+
+### Standard Folder Structure
+
+**Priority**: High
+**Rationale**: Consistent organization across all Flutter projects
+
+```
+lib/
+├── main.dart                    # App entry point
+├── constants/                   # Static data and configuration
+│   ├── app_constants.dart       # Business logic constants
+│   └── [domain]_data.dart       # Domain-specific data structures
+├── models/                      # Data models
+│   └── [entity].dart           # Domain entities (User, Product, etc.)
+├── services/                    # Business logic layer
+│   ├── [external]_service.dart # External service integrations
+│   ├── navigation_service.dart # Centralized navigation
+│   └── [utility]_service.dart  # File processing, utilities
+├── screens/                     # UI screens
+│   ├── [main]_screen.dart      # Main navigation screens
+│   ├── [feature]_screen.dart   # Feature-specific screens
+│   └── ...
+├── widgets/                     # Reusable UI components
+│   ├── [layout]_widget.dart    # Layout components
+│   ├── [input]_widget.dart     # Input components
+│   └── ...
+└── theme/                       # Design system
+    └── app_theme.dart          # Centralized styling
+```
+
+**Template for new features**:
+
+```dart
+// New feature structure
+lib/
+├── screens/
+│   └── feature_screen.dart
+├── widgets/
+│   └── feature_widget.dart
+└── services/
+    └── feature_service.dart (if needed)
+```
+
+### File Naming Conventions
+
+**Priority**: High
+**Standard**: Use snake_case with descriptive suffixes
+
+```dart
+// Screens: [feature]_screen.dart
+home_screen.dart
+user_profile_screen.dart
+product_detail_screen.dart
+
+// Widgets: [purpose]_[type].dart
+custom_buttons.dart
+app_header.dart
+loading_indicator.dart
+
+// Services: [domain]_service.dart
+api_service.dart
+navigation_service.dart
+storage_service.dart
+
+// Models: [entity].dart (singular)
+user.dart
+product.dart
+order.dart
+
+// Constants: [domain]_[type].dart
+app_constants.dart
+api_endpoints.dart
+theme_constants.dart
+```
+
+### Import Organization
+
+**Priority**: Medium
+**Standard order**:
+
+```dart
+// 1. Flutter framework imports
+import 'package:flutter/material.dart';
+
+// 2. Third-party package imports
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+
+// 3. Local imports - absolute paths from lib/
+import 'config/app_config.dart';
+import 'services/api_service.dart';
+import 'screens/home_screen.dart';
+import 'theme/app_theme.dart';
+
+// 4. Relative imports (only when necessary)
+import '../widgets/custom_buttons.dart';
+```
+
+## 2. WIDGET PATTERNS
+
+### StatefulWidget vs StatelessWidget Rules
+
+**Priority**: High
+**Rule**: Use StatelessWidget unless state is required
+
+**StatelessWidget Template**:
+
+```dart
+/// Brief description of widget purpose
+class CustomWidget extends StatelessWidget {
+  final String title;
+  final VoidCallback? onPressed;
+  final bool isEnabled;
+
+  const CustomWidget({
+    super.key,
+    required this.title,
+    this.onPressed,
+    this.isEnabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: isEnabled
+          ? ElevatedButton(
+              onPressed: onPressed,
+              child: Text(title),
+            )
+          : const Text('Disabled'),
+    );
+  }
+}
+```
+
+**StatefulWidget Only When Needed**:
+
+```dart
+class InteractiveWidget extends StatefulWidget {
+  const InteractiveWidget({super.key});
+
+  @override
+  State<InteractiveWidget> createState() => _InteractiveWidgetState();
+}
+
+class _InteractiveWidgetState extends State<InteractiveWidget> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    // Implementation with state management
+    return ExpansionTile(
+      title: Text('Title'),
+      initiallyExpanded: _isExpanded,
+      onExpansionChanged: (expanded) {
+        setState(() => _isExpanded = expanded);
+      },
+    );
+  }
+}
+```
+
+### Const Constructor Standards
+
+**Priority**: High
+**Rule**: Always use const constructors when possible
+
+**Template**:
+
+```dart
+class ReusableWidget extends StatelessWidget {
+  final String title;
+  final VoidCallback? onPressed;
+  final bool isEnabled;
+
+  const ReusableWidget({
+    super.key,  // Always use super.key
+    required this.title,
+    this.onPressed,
+    this.isEnabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: isEnabled
+          ? ElevatedButton(onPressed: onPressed, child: Text(title))
+          : const Text('Disabled'), // Use const for static widgets
+    );
+  }
+}
+```
+
+### Widget Extraction Guidelines
+
+**Priority**: High
+**Extraction Criteria**:
+
+- Used in 2+ places
+- Self-contained functionality
+- Clear single responsibility
+- Configurable through parameters
+
+**Before (duplicated code)**:
+
+```dart
+// Repeated across multiple screens
+Row(
+  children: [
+    IconButton(
+      onPressed: () => Navigator.pop(context),
+      icon: Icon(Icons.arrow_back),
+    ),
+    const Spacer(),
+    IconButton(
+      onPressed: () => Navigator.pushAndRemoveUntil(/*...*/),
+      icon: Icon(Icons.home),
+    ),
+  ],
+)
+```
+
+**After (extracted reusable widget)**:
+
+```dart
+class AppHeader extends StatelessWidget {
+  final bool showBackButton;
+  final bool showHomeButton;
+  final VoidCallback? onBackPressed;
+  final VoidCallback? onHomePressed;
+
+  const AppHeader({
+    super.key,
+    this.showBackButton = true,
+    this.showHomeButton = true,
+    this.onBackPressed,
+    this.onHomePressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (showBackButton)
+          IconButton(
+            onPressed: onBackPressed ?? () => Navigator.pop(context),
+            icon: Icon(Icons.arrow_back),
+          ),
+        const Spacer(),
+        if (showHomeButton)
+          IconButton(
+            onPressed: onHomePressed ?? () => _navigateToHome(context),
+            icon: Icon(Icons.home),
+          ),
+      ],
+    );
+  }
+}
+
+// Usage:
+const AppHeader(), // Simple usage with defaults
+const AppHeader(showBackButton: false), // Customized
+```
+
+## 3. CODE STYLE & CONVENTIONS
+
+### Naming Conventions
+
+**Priority**: High
+
+**Classes**: PascalCase
+
+```dart
+class UserService {}
+class CustomTextField {}
+class ApiResponse {}
+```
+
+**Variables/Methods**: camelCase
+
+```dart
+bool isLoading = false;
+void performAction() {}
+final TextEditingController userController;
+```
+
+**Constants**: camelCase with descriptive prefixes
+
+```dart
+// Theme constants
+static const double defaultPadding = 16.0;
+static const Color primaryColor = Color(0xFF2196F3);
+static const String defaultFontFamily = 'Roboto';
+
+// API constants
+static const String baseUrl = 'https://api.example.com';
+static const Duration defaultTimeout = Duration(seconds: 30);
+```
+
+**Private Members**: Leading underscore
+
+```dart
+class _ScreenState extends State<Screen> {
+  bool _isLoading = false;
+
+  Widget _buildContent() {}
+  void _handleUserAction() {}
+}
+```
+
+### Method Organization
+
+**Priority**: Medium
+**Standard order within classes**:
+
+```dart
+class ExampleScreen extends StatefulWidget {
+  // 1. Constructor
+  const ExampleScreen({super.key});
+
+  // 2. createState (for StatefulWidget)
+  @override
+  State<ExampleScreen> createState() => _ExampleScreenState();
+}
+
+class _ExampleScreenState extends State<ExampleScreen> {
+  // 1. Static constants
+  static const double _defaultPadding = 16.0;
+
+  // 2. Instance variables
+  bool _isLoading = false;
+  final TextEditingController _controller = TextEditingController();
+
+  // 3. Lifecycle methods
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // 4. Build method
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(/* ... */);
+  }
+
+  // 5. Private build helper methods
+  Widget _buildHeader() {}
+  Widget _buildBody() {}
+
+  // 6. Event handlers
+  void _onButtonPressed() {}
+  void _onTextChanged(String value) {}
+
+  // 7. Navigation methods
+  void _navigateToNextScreen() {}
+}
+```
+
+### Documentation Standards
+
+**Priority**: Medium
+
+**Widget Documentation**:
+
+```dart
+/// Brief description of widget purpose and usage
+///
+/// Used across multiple screens for consistent [functionality]
+class CustomWidget extends StatelessWidget {
+  /// Description of important parameter
+  final String title;
+
+  /// Optional callback for user interaction
+  final VoidCallback? onPressed;
+
+  /// Creates a [CustomWidget] with the given [title]
+  ///
+  /// The [onPressed] callback is called when user interacts with widget
+  const CustomWidget({
+    super.key,
+    required this.title,
+    this.onPressed,
+  });
+}
+```
+
+**Service Documentation**:
+
+```dart
+/// Service for handling [domain] operations
+///
+/// Provides methods for CRUD operations and business logic
+class DomainService {
+  /// Performs [operation] with given [parameters]
+  ///
+  /// Returns [ResultType] on success
+  ///
+  /// Throws [ExceptionType] when [condition] occurs
+  Future<ResultType> performOperation(Parameters params) async {
+    // Implementation
+  }
+}
+```
+
+## 4. PERFORMANCE OPTIMIZATIONS
+
+### Widget Optimization Techniques
+
+**Priority**: High
+
+**Use ValueListenableBuilder for localized updates**:
+
+```dart
+// ❌ INEFFICIENT - Full widget rebuild
+class _FormState extends State<Form> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: _controller,
+      decoration: InputDecoration(
+        suffixIcon: _controller.text.isNotEmpty
+            ? IconButton(onPressed: _clearText, icon: Icon(Icons.clear))
+            : null,
+      ),
+      onChanged: (value) {
+        setState(() {}); // Rebuilds entire widget
+      },
+    );
+  }
+}
+
+// ✅ OPTIMIZED - Localized rebuild
+class _FormState extends State<Form> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: _controller,
+      decoration: InputDecoration(
+        suffixIcon: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _controller,
+          builder: (context, value, child) {
+            return value.text.isNotEmpty
+                ? IconButton(onPressed: _clearText, icon: Icon(Icons.clear))
+                : const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Memory Management Rules
+
+**Priority**: High
+
+**Controller Disposal Template**:
+
+```dart
+class _ScreenState extends State<Screen> {
+  final TextEditingController _textController = TextEditingController();
+  final AnimationController _animController = AnimationController();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _animController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+}
+```
+
+**Async Operation Safety**:
+
+```dart
+class _ScreenState extends State<Screen> {
+  bool _isLoading = false;
+
+  Future<void> _performAsyncOperation() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await someAsyncOperation();
+    } finally {
+      if (mounted) {  // Check if widget is still mounted
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+}
+```
+
+### Const Widget Usage
+
+**Priority**: Medium
+
+```dart
+// ✅ GOOD - Use const for static widgets
+const SizedBox(height: 16),
+const Spacer(),
+const Divider(),
+
+// ✅ GOOD - Use const constructors
+const CustomWidget(
+  title: 'Static Title',
+  isEnabled: true,
+)
+
+// ❌ AVOID - Missing const when possible
+SizedBox(height: 16),  // Should be const
+CustomWidget(title: 'Static Title'),  // Should be const
+```
+
+## 5. STATE MANAGEMENT
+
+### Recommended Pattern
+
+**Priority**: High
+**Pattern**: Local State + Service Layer
+
+**Rationale**:
+
+- Simple and maintainable for most applications
+- Clear separation between UI state and business logic
+- Easy to test and understand
+- Scales well for small to medium applications
+
+**Implementation Template**:
+
+```dart
+class _ScreenState extends State<Screen> {
+  // UI state
+  bool _isLoading = false;
+  String? _errorMessage;
+  List<DataModel> _items = [];
+
+  // Service dependency
+  final ApiService _apiService = ApiService();
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final items = await _apiService.fetchItems();
+      setState(() {
+        _items = items;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+}
+```
+
+### Alternative Patterns
+
+**For larger applications, consider**:
+
+- **Provider**: For shared state across widgets
+- **Riverpod**: For dependency injection and state management
+- **Bloc**: For complex business logic and state transitions
+
+## 6. REUSABLE COMPONENTS
+
+### Navigation Header Template
+
+```dart
+/// Reusable header widget with navigation controls
+class AppHeader extends StatelessWidget {
+  final bool showBackButton;
+  final bool showMenuButton;
+  final String? title;
+  final List<Widget>? actions;
+
+  const AppHeader({
+    super.key,
+    this.showBackButton = true,
+    this.showMenuButton = false,
+    this.title,
+    this.actions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      leading: showBackButton
+          ? IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.arrow_back),
+            )
+          : showMenuButton
+              ? IconButton(
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  icon: Icon(Icons.menu),
+                )
+              : null,
+      title: title != null ? Text(title!) : null,
+      actions: actions,
+    );
+  }
+}
+```
+
+### Loading Indicator Template
+
+```dart
+/// Reusable loading indicator with optional message
+class LoadingIndicator extends StatelessWidget {
+  final String? message;
+  final bool showMessage;
+
+  const LoadingIndicator({
+    super.key,
+    this.message,
+    this.showMessage = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          if (showMessage && message != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              message!,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+```
+
+### Error Display Template
+
+```dart
+/// Reusable error display with retry functionality
+class ErrorDisplay extends StatelessWidget {
+  final String message;
+  final VoidCallback? onRetry;
+  final String retryText;
+
+  const ErrorDisplay({
+    super.key,
+    required this.message,
+    this.onRetry,
+    this.retryText = 'Retry',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onRetry,
+                child: Text(retryText),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+```
+
+## 7. VERSION MANAGEMENT
+
+### Semantic Versioning Strategy
+
+**Priority**: High
+**Rule**: Follow semantic versioning (SemVer) with automated build number increments
+
+**Version Format**: `MAJOR.MINOR.PATCH+BUILD`
+
+```yaml
+# pubspec.yaml
+version: 1.2.3+45
+# Where:
+# 1 = MAJOR version (breaking changes)
+# 2 = MINOR version (new features, backward compatible)
+# 3 = PATCH version (bug fixes, backward compatible)
+# 45 = BUILD number (auto-incremented on each build)
+```
+
+**Version Increment Rules**:
+
+- **MAJOR**: Breaking changes, API changes, major architecture updates
+- **MINOR**: New features, UI improvements, non-breaking functionality
+- **PATCH**: Bug fixes, performance improvements, minor tweaks
+- **BUILD**: Auto-incremented on every build/release
+
+**Implementation Template**:
+
+```dart
+// lib/constants/app_constants.dart
+class AppConstants {
+  static const String appName = 'Your App Name';
+  static const String version = '1.2.3';
+  static const String buildNumber = '45';
+  static const String fullVersion = '$version+$buildNumber';
+
+  // Display version in UI
+  static String get displayVersion => 'v$version ($buildNumber)';
+}
+
+// Usage in About screen or settings
+Text('Version: ${AppConstants.displayVersion}')
+```
+
+**Automated Build Scripts**:
+
+```bash
+#!/bin/bash
+# increment_version.sh - Auto-increment build number
+
+# Read current version from pubspec.yaml
+CURRENT_VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2)
+VERSION_NAME=$(echo $CURRENT_VERSION | cut -d'+' -f1)
+BUILD_NUMBER=$(echo $CURRENT_VERSION | cut -d'+' -f2)
+
+# Increment build number
+NEW_BUILD=$((BUILD_NUMBER + 1))
+NEW_VERSION="${VERSION_NAME}+${NEW_BUILD}"
+
+# Update pubspec.yaml
+sed -i "s/^version:.*/version: ${NEW_VERSION}/" pubspec.yaml
+
+echo "Version updated: ${CURRENT_VERSION} -> ${NEW_VERSION}"
+```
+
+**Manual Version Bump**:
+
+```bash
+#!/bin/bash
+# bump_version.sh - Manual version increment
+
+TYPE=$1 # major, minor, or patch
+
+if [ -z "$TYPE" ]; then
+  echo "Usage: ./bump_version.sh [major|minor|patch]"
+  exit 1
+fi
+
+CURRENT_VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2)
+VERSION_NAME=$(echo $CURRENT_VERSION | cut -d'+' -f1)
+BUILD_NUMBER=$(echo $CURRENT_VERSION | cut -d'+' -f2)
+
+# Parse version numbers
+MAJOR=$(echo $VERSION_NAME | cut -d'.' -f1)
+MINOR=$(echo $VERSION_NAME | cut -d'.' -f2)
+PATCH=$(echo $VERSION_NAME | cut -d'.' -f3)
+
+case $TYPE in
+  "major")
+    MAJOR=$((MAJOR + 1))
+    MINOR=0
+    PATCH=0
+    ;;
+  "minor")
+    MINOR=$((MINOR + 1))
+    PATCH=0
+    ;;
+  "patch")
+    PATCH=$((PATCH + 1))
+    ;;
+esac
+
+NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}+${BUILD_NUMBER}"
+sed -i "s/^version:.*/version: ${NEW_VERSION}/" pubspec.yaml
+
+echo "Version bumped: ${CURRENT_VERSION} -> ${NEW_VERSION}"
+```
+
+**Git Integration**:
+
+```bash
+# Tag releases with version
+git tag -a v1.2.3 -m "Release version 1.2.3"
+git push origin v1.2.3
+
+# Auto-generate changelog from commits
+git log --oneline --since="2 weeks ago" > CHANGELOG_RECENT.md
+```
+
+**Version Display Widget**:
+
+```dart
+class VersionDisplay extends StatelessWidget {
+  final bool showBuildNumber;
+  final TextStyle? textStyle;
+
+  const VersionDisplay({
+    super.key,
+    this.showBuildNumber = true,
+    this.textStyle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          final packageInfo = snapshot.data!;
+          final version = showBuildNumber
+              ? '${packageInfo.version} (${packageInfo.buildNumber})'
+              : packageInfo.version;
+
+          return Text(
+            'Version $version',
+            style: textStyle ?? Theme.of(context).textTheme.bodySmall,
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+```
+
+**Dependencies Required**:
+
+```yaml
+# pubspec.yaml
+dependencies:
+  package_info_plus: ^4.0.0 # For runtime version access
+
+dev_dependencies:
+  build_runner: ^2.0.0 # For code generation (optional)
+```
+
+## 8. SERVICE LAYER PATTERNS
+
+### API Service Template
+
+```dart
+class ApiService {
+  static final ApiService _instance = ApiService._internal();
+  factory ApiService() => _instance;
+  ApiService._internal();
+
+  final String _baseUrl = 'https://api.example.com';
+  final Duration _timeout = Duration(seconds: 30);
+
+  Future<List<T>> fetchList<T>(
+    String endpoint,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/$endpoint'),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((item) => fromJson(item)).toList();
+      } else {
+        throw ApiException('Failed to load data: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint("ApiService: Fetch error - $e");
+      throw ApiException('Network error occurred');
+    }
+  }
+
+  Future<T> create<T>(
+    String endpoint,
+    Map<String, dynamic> data,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/$endpoint'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      ).timeout(_timeout);
+
+      if (response.statusCode == 201) {
+        return fromJson(json.decode(response.body));
+      } else {
+        throw ApiException('Failed to create: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint("ApiService: Create error - $e");
+      throw ApiException('Failed to create item');
+    }
+  }
+}
+
+class ApiException implements Exception {
+  final String message;
+  ApiException(this.message);
+
+  @override
+  String toString() => message;
+}
+```
+
+### Navigation Service Template
+
+```dart
+class NavigationService {
+  /// Navigate to new screen
+  static Future<T?> push<T>(BuildContext context, Widget screen) {
+    return Navigator.push<T>(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+    );
+  }
+
+  /// Replace current screen
+  static Future<T?> pushReplacement<T>(BuildContext context, Widget screen) {
+    return Navigator.pushReplacement<T, void>(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+    );
+  }
+
+  /// Clear stack and navigate
+  static Future<T?> pushAndRemoveUntil<T>(
+    BuildContext context,
+    Widget screen, {
+    bool Function(Route<dynamic>)? predicate,
+  }) {
+    return Navigator.pushAndRemoveUntil<T>(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+      predicate ?? (route) => false,
+    );
+  }
+
+  /// Go back
+  static void pop<T>(BuildContext context, [T? result]) {
+    Navigator.pop(context, result);
+  }
+}
+```
+
+## 8. TESTING STANDARDS
+
+### Widget Testing Template
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:myapp/widgets/custom_button.dart';
+
+void main() {
+  group('CustomButton Tests', () {
+    testWidgets('displays text and responds to tap', (tester) async {
+      bool tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomButton(
+              onPressed: () => tapped = true,
+              text: 'Test Button',
+            ),
+          ),
+        ),
+      );
+
+      // Verify button is displayed
+      expect(find.text('Test Button'), findsOneWidget);
+      expect(find.byType(CustomButton), findsOneWidget);
+
+      // Test tap functionality
+      await tester.tap(find.byType(CustomButton));
+      expect(tapped, isTrue);
+    });
+  });
+}
+```
+
+### Service Testing Template
+
+```dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:myapp/services/api_service.dart';
+
+class MockHttpClient extends Mock implements http.Client {}
+
+void main() {
+  group('ApiService Tests', () {
+    late ApiService apiService;
+    late MockHttpClient mockClient;
+
+    setUp(() {
+      mockClient = MockHttpClient();
+      apiService = ApiService(client: mockClient);
+    });
+
+    test('fetchItems returns list of items on success', () async {
+      // Arrange
+      when(mockClient.get(any)).thenAnswer(
+        (_) async => http.Response('{"items": []}', 200),
+      );
+
+      // Act
+      final result = await apiService.fetchItems();
+
+      // Assert
+      expect(result, isA<List<Item>>());
+      verify(mockClient.get(any)).called(1);
+    });
+  });
+}
+```
+
+## 9. ERROR HANDLING
+
+### Exception Handling Pattern
+
+```dart
+// Custom exception classes
+class AppException implements Exception {
+  final String message;
+  final String? code;
+
+  AppException(this.message, {this.code});
+
+  @override
+  String toString() => message;
+}
+
+class NetworkException extends AppException {
+  NetworkException(String message) : super(message, code: 'NETWORK_ERROR');
+}
+
+class ValidationException extends AppException {
+  ValidationException(String message) : super(message, code: 'VALIDATION_ERROR');
+}
+
+// Service layer error handling
+Future<Result> serviceMethod() async {
+  try {
+    // Business logic
+    return result;
+  } on SocketException {
+    throw NetworkException('No internet connection');
+  } on TimeoutException {
+    throw NetworkException('Request timeout');
+  } catch (e) {
+    debugPrint("ServiceName: Method error - $e");
+    throw AppException('An unexpected error occurred');
+  }
+}
+
+// UI layer error handling
+try {
+  await _service.performOperation();
+  // Show success feedback
+} on NetworkException catch (e) {
+  _showErrorDialog('Network Error', e.message);
+} on ValidationException catch (e) {
+  _showErrorDialog('Validation Error', e.message);
+} on AppException catch (e) {
+  _showErrorDialog('Error', e.message);
+}
+```
+
+## 10. IMPLEMENTATION CHECKLIST
+
+### For New Features:
+
+- [ ] Follow folder structure conventions
+- [ ] Use appropriate StatefulWidget vs StatelessWidget
+- [ ] Add const constructors where possible
+- [ ] Extract reusable widgets when used 2+ times
+- [ ] Implement proper error handling
+- [ ] Add controller disposal in dispose()
+- [ ] Use centralized theme for styling
+- [ ] Use NavigationService for navigation
+- [ ] Document public APIs
+- [ ] Add appropriate tests
+
+### For Code Reviews:
+
+- [ ] Check for const constructor usage
+- [ ] Verify proper import organization
+- [ ] Ensure consistent naming conventions
+- [ ] Look for widget extraction opportunities
+- [ ] Verify error handling implementation
+- [ ] Check for memory leaks (controller disposal)
+- [ ] Ensure theme consistency
+- [ ] Verify navigation patterns
+- [ ] Check for performance optimizations
+- [ ] Validate test coverage
+
+### Performance Checklist:
+
+- [ ] Use ValueListenableBuilder for localized updates
+- [ ] Dispose of all controllers and resources
+- [ ] Use const widgets where possible
+- [ ] Check mounted before setState in async operations
+- [ ] Use stable keys for list items
+- [ ] Minimize setState scope
+
+---
+
+_Universal Flutter/Dart standards - applicable to any application_
+_Last updated: January 2025_
